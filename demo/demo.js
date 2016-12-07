@@ -3,13 +3,13 @@
     var elem = document.getElementById('1');
     var handler = new Handler(elem);
 
-    handler.start(function() {
+    handler.bind('start', function() {
         console.log('Custom start function');
     });
-    handler.processing(function() {
+    handler.bind('processing', function() {
         console.log('Custom processing function');
     });
-    handler.end(function() {
+    handler.bind('end', function() {
         console.log('Custom end function');
     });
     handler.init();

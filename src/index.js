@@ -1,40 +1,59 @@
 'use strict';
 
 (function(global, handler) {
-    global.iwantScroll = handler();
-})(window, function () {
+    global.iwantScroll = handler(global);
+})(window, function (global) {
     var events = {
         mouse: ['mousedown', 'mousemove', 'mouseup'],
     };
+    var statusSequence = ['start', 'processing', 'end'];
+    var callbackString = 'callback';
 
     function isFunction (x) {
         return Object.prototype.toString.call(x) === '[object Function]';
     }
 
-    function _start (callback) {
+    //Supply a way to bind different function to mouse action.
+    function _bind (statusName, callback) {
+        this[statusName + callbackString] = callback;
+    }
+
+    function _start () {
+        isFunction(this['start' + callbackString]) ? this['start' + callbackString]() : 0;
         console.log('start');
     }
 
     function _processing (callback) {
+        isFunction(this['processing' + callbackString]) ? this['processing' + callbackString]() : 0;
         console.log('processing');
     }
 
     function _end (callback) {
+        isFunction(this['end' + callbackString]) ? this['end' + callbackString]() : 0;
         console.log('end');
+
+        removeMoveEvent(this._target, this);
     }
 
     function _startHandler (Fn) {
-        return function (event) {
-            var _element = this;
+        Fn._processing_function = _processingHandler(Fn);
 
-            if (!_element._hasMouseMove) {
-                _element._hasMouseMove = true;
-                addEventListener(_element, 'mousemove', _processingHandler(Fn));
+        return function (event) {
+            var currentElement = this;
+
+            if (!currentElement._hasMouseMove) {
+                currentElement._hasMouseMove = true;
+
+                /*
+                 *Maybe the element draged is small and easy to lost the target,
+                 *So bind the event to document or window is a better way to fix it.
+                 */
+                addEventListener(global, 'mousemove', Fn._processing_function);
             }
 
-            if (!_element._hasMouseUp) {
-                _element._hasMouseUp = true;
-                addEventListener(_element, 'mouseup', _endHandler(Fn));
+            if (!currentElement._hasMouseUp) {
+                currentElement._hasMouseUp = true;
+                addEventListener(global, 'mouseup', _endHandler(Fn));
             }
 
             Fn.start();
@@ -55,6 +74,11 @@
 
     function _init () {
         addEventListener(this._target, 'mousedown', _startHandler(this));
+    }
+
+    function removeMoveEvent (currentElement, currentFunc) {
+        removeEventListener(global, 'mousemove', currentFunc._processing_function);
+        currentElement._hasMouseMove = false;
     }
 
     function addEventListener (element, eventName, fn) {
@@ -84,6 +108,7 @@
 
     iwantScroll.prototype = {
         init: _init,
+        bind: _bind,
         start: _start,
         processing: _processing,
         end: _end
