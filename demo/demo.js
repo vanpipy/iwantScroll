@@ -6,8 +6,8 @@
     handler.bind('start', function() {
         console.log('Custom start function');
     });
-    handler.bind('processing', function() {
-        console.log('Custom processing function');
+    handler.bind('move', function() {
+        console.log('Custom move function');
     });
     handler.bind('end', function() {
         console.log('Custom end function');
