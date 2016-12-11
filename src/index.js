@@ -2,28 +2,22 @@
 (function(global, handler) {
     global.iwantScroll = handler(global);
 })(window, function (global) {
-    //All elements which scroll event binded cache here.
-    var scrollElementCollections = [];
-
-    //Element under scrolling is only one when scrolling.
-    var activeScrollElement = [];
-
-    var statusSequence = ['start', 'move', 'end'];
     var callbackString = 'callback';
-
     var GLOBALMOVEER = '_hasMouseMove';
     var GLOBALEND = '_hasMouseUp';
 
-    function appendActiveScroll (object) {
-        activeScrollElement[0] = object;
-    }
-
-    function getActiveScroll () {
-        return activeScrollElement[0] || {};
-    }
+    var statusSequence = ['mousedown', 'mousemove', 'mouseup'];
+    var currentStatus = 0;
+    var currentElement = null;
+    var isHold = false;
+    var currentMoveFunc = null;
 
     function isFunction (x) {
         return Object.prototype.toString.call(x) === '[object Function]';
+    }
+
+    function modifyStatusToNext (nextStatus) {
+        currentStatus = nextStatus;
     }
 
     //Supply a way to bind different function to mouse action.
@@ -33,7 +27,6 @@
 
     function _start () {
         isFunction(this['start' + callbackString]) ? this['start' + callbackString]() : 0;
-
         console.log('start');
     }
 
@@ -45,18 +38,14 @@
     function _end () {
         isFunction(this['end' + callbackString]) ? this['end' + callbackString]() : 0;
         console.log('end');
-
-        removeMoveEvent(this._target, getActiveScroll().fn);
     }
 
     function _startHandler (Fn) {
-        Fn._move_function = _moveHandler(Fn);
-
+        //Out of below function the start step status is always 0.
         return function (event) {
-            var currentElement = this;
-
-            globalMoveListener(Fn, currentElement);
-            globalEndListener(Fn);
+            //In fact, the start step next status will be changed to 1 successfully.
+            globalMoveListener(statusSequence[currentStatus].next);
+            isHold = true;
 
             Fn.start();
         };
@@ -64,18 +53,45 @@
 
     function _moveHandler (Fn) {
         return function (event) {
-            Fn.move();
+            globalEndListener(statusSequence[currentStatus].next);
+
+            if (isHold) {
+                Fn.move();
+            }
         };
     }
 
     function _endHandler (Fn) {
         return function (event) {
+            isHold = false;
+
             Fn.end();
         };
     }
 
     function _init () {
-        addEventListener(this._target, 'mousedown', _startHandler(this));
+        statusSequence = [
+            _startHandler(this), 
+            _moveHandler(this), 
+            _endHandler(this)
+        ].map(function (handler, index) {
+            return {
+                key: statusSequence[index],
+                handler: handler,
+                next: (index + 1) % statusSequence.length
+            }
+        });
+
+        var beginStatus = statusSequence[0].key;
+        var endStatus = statusSequence[statusSequence.length - 1].key
+
+        addEventListener(this._target, beginStatus, statusSequence[currentStatus].handler);
+        addEventListener(global, endStatus, function () {
+            setTimeout(function() {
+                removeMoveEvent();
+                resetStatusAfterEnd();
+            }, 10);
+        });
     }
 
     function addEventListener (element, eventName, fn) {
@@ -99,9 +115,16 @@
         }
     }
 
-    function removeMoveEvent (currentElement, currentFunc) {
-        removeEventListener(global, 'mousemove', getActiveScroll().fn);
+    function removeMoveEvent () {
+        removeEventListener(global, 'mousemove', currentMoveFunc);
         modifyGlobalStatus(GLOBALMOVEER, false);
+    }
+
+    function resetStatusAfterEnd () {
+        var last = statusSequence[statusSequence.length - 1];
+        removeEventListener(global, last.key, last.handler);
+        modifyStatusToNext(last.next);
+        modifyGlobalStatus(GLOBALEND, false);
     }
 
     function modifyGlobalStatus (statusName, status) {
@@ -112,33 +135,30 @@
         return global[statusName];
     }
 
-    function globalMoveListener (currentFunc, currentElement) {
+    function globalMoveListener (next) {
         if (!getGlobalStatus(GLOBALMOVEER)) {
             /*
              *Maybe the element draged is small and easy to lost the target,
              *So bind the event to document or window is a better way to fix it.
              */
-            var _handler = _moveHandler(currentFunc);
-            addEventListener(global, 'mousemove', _handler);
+            modifyStatusToNext(next);
+            currentMoveFunc = statusSequence[next].handler;
+            addEventListener(global, 'mousemove', currentMoveFunc);
             modifyGlobalStatus(GLOBALMOVEER, true);
-            appendActiveScroll({
-                elem: currentElement,
-                fn: _handler
-            });
         }
     }
 
-    function globalEndListener (currentFunc) {
+    function globalEndListener (next) {
         if (!getGlobalStatus(GLOBALEND)) {
-            addEventListener(global, 'mouseup', _endHandler(currentFunc));
+            modifyStatusToNext(next);
+            addEventListener(global, 'mouseup', statusSequence[next].handler);
             modifyGlobalStatus(GLOBALEND, true);
         }
     }
 
     var iwantScroll = function (element, options) {
+        currentElement = element;
         this._target = element;
-
-        scrollElementCollections.push(element);
     };
 
     iwantScroll.prototype = {
