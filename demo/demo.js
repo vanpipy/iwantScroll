@@ -1,16 +1,9 @@
 
 (function(global, Handler) {
-    var elem = document.getElementById('1');
-    var handler = new Handler(elem);
+    var elem = document.getElementById('demo');
+    var handler = new Handler({
+        el: elem,
+    });
 
-    handler.bind('start', function() {
-        console.log('Custom start function');
-    });
-    handler.bind('move', function() {
-        console.log('Custom move function');
-    });
-    handler.bind('end', function() {
-        console.log('Custom end function');
-    });
     handler.init();
 })(window, window.iwantScroll);

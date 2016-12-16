@@ -1,4 +1,8 @@
 # I want Scroll
-It's a long story but brief. Here come from [iScroll](https://github.com/cubiq/iscroll) and [JRoll](https://github.com/chjtx/JRoll).
+The iwantScroll bases on a single DOM to create a scrollable area in the window.
 
-A mouse handler alway three step, mousedown -> mousemove -> mouseup. And the curious thing is [action happened] -> [action progress] -> [action end], status modifies.
+# Process
+1. Calculate the scrollable window size and the content in the scrollable window.
+2. Bind the drag events to content.
+3. Create the scrollbar with calculation of window and content, sync the data with drag events.
+

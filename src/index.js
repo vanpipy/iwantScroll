@@ -1,181 +1,143 @@
 /*
- * IwantScroll
- *
- * A completed scroll process includes [start, move, end, clear];
- *
- * Each part has two status[0, 1];
- * 0 represent in the status otherwise out of it.
- *
- * When the last part ended, clear all effect. 
+ * iwantScroll
  */
 (function(global, handler) {
-    global.iwantScroll = handler(global);
-})(window, function (global) {
-    var callbackString = 'callback';
-    var GLOBALMOVEER = '_hasMouseMove';
-    var GLOBALEND = '_hasMouseUp';
 
-    var statusSequence = ['mousedown', 'mousemove', 'mouseup'];
-    var currentStatus = 0;
-    var currentElement = null;
-    var isHold = false;
-    var currentMoveFunc = null;
+    global.iwantScroll = handler();
 
-    function isFunction (x) {
-        return Object.prototype.toString.call(x) === '[object Function]';
+})(window, function () {
+    'use strict';
+
+    function iwantScroll (options) {
+        Object.assign(this, {
+            el: null,
+            width: 100,
+            height: 300,
+            innerEl: null,
+            innerWidth: 400,
+            innerHeight: 800,
+        }, options);
+
+        this.from = { x: 0, y: 0 };
+        this.to = { x: 0, y: 0 };
+        this.translate = { x: 0, y: 0 };
+        this.xbar = null;
+        this.ybar = null;
+        this.xRadio = 1;
+        this.yRadio = 1;
     }
-
-    function modifyStatusToNext (nextStatus) {
-        currentStatus = nextStatus;
-    }
-
-    //Supply a way to bind different function to mouse action.
-    function _bind (statusName, callback) {
-        this[statusName + callbackString] = callback;
-    }
-
-    function _start () {
-        isFunction(this['start' + callbackString]) ? this['start' + callbackString]() : 0;
-        console.log('start');
-    }
-
-    function _move () {
-        isFunction(this['move' + callbackString]) ? this['move' + callbackString]() : 0;
-        console.log('move');
-    }
-
-    function _end () {
-        isFunction(this['end' + callbackString]) ? this['end' + callbackString]() : 0;
-        console.log('end');
-    }
-
-    function _startHandler (Fn) {
-        //Out of below function the start step status is always 0.
-        return function (event) {
-            //In fact, the start step next status will be changed to 1 successfully.
-            globalMoveListener(statusSequence[currentStatus].next);
-            isHold = true;
-
-            Fn.start();
-        };
-    }
-
-    function _moveHandler (Fn) {
-        return function (event) {
-            globalEndListener(statusSequence[currentStatus].next);
-
-            if (isHold) {
-                Fn.move();
-            }
-        };
-    }
-
-    function _endHandler (Fn) {
-        return function (event) {
-            isHold = false;
-
-            Fn.end();
-        };
-    }
-
-    function _init () {
-        statusSequence = [
-            _startHandler(this), 
-            _moveHandler(this), 
-            _endHandler(this)
-        ].map(function (handler, index) {
-            return {
-                key: statusSequence[index],
-                handler: handler,
-                next: (index + 1) % statusSequence.length
-            };
-        });
-
-        var beginStatus = statusSequence[0].key;
-        var endStatus = statusSequence[statusSequence.length - 1].key;
-
-        addEventListener(this._target, beginStatus, statusSequence[currentStatus].handler);
-        addEventListener(global, endStatus, function () {
-            setTimeout(function() {
-                removeMoveEvent();
-                resetStatusAfterEnd();
-            }, 10);
-        });
-    }
-
-    function addEventListener (element, eventName, fn) {
-        if (element.addEventListener) {
-            element.addEventListener(eventName, fn, false);
-        } else if (element.attachEvent) {
-            element.attachEvent('on' + eventName, fn);
-        } else {
-            element[eventName] = fn;
-        }
-    }
-
-    function removeEventListener (element, eventName, fn) {
-        if (element.removeEventListener) {
-            element.removeEventListener(eventName, fn, false);
-        } else if (element.detachEvent) {
-            element.detachEvent('on' + eventName, fn);
-        } else {
-            fn = null;
-            delete element[eventName];
-        }
-    }
-
-    function removeMoveEvent () {
-        removeEventListener(global, 'mousemove', currentMoveFunc);
-        modifyGlobalStatus(GLOBALMOVEER, false);
-    }
-
-    function resetStatusAfterEnd () {
-        var last = statusSequence[statusSequence.length - 1];
-        removeEventListener(global, last.key, last.handler);
-        modifyStatusToNext(last.next);
-        modifyGlobalStatus(GLOBALEND, false);
-    }
-
-    function modifyGlobalStatus (statusName, status) {
-        global[statusName] = status;
-    }
-
-    function getGlobalStatus (statusName) {
-        return global[statusName];
-    }
-
-    function globalMoveListener (next) {
-        if (!getGlobalStatus(GLOBALMOVEER)) {
-            /*
-             *Maybe the element draged is small and easy to lost the target,
-             *So bind the event to document or window is a better way to fix it.
-             */
-            modifyStatusToNext(next);
-            currentMoveFunc = statusSequence[next].handler;
-            addEventListener(global, 'mousemove', currentMoveFunc);
-            modifyGlobalStatus(GLOBALMOVEER, true);
-        }
-    }
-
-    function globalEndListener (next) {
-        if (!getGlobalStatus(GLOBALEND)) {
-            modifyStatusToNext(next);
-            addEventListener(global, 'mouseup', statusSequence[next].handler);
-            modifyGlobalStatus(GLOBALEND, true);
-        }
-    }
-
-    var iwantScroll = function (element, options) {
-        currentElement = element;
-        this._target = element;
-    };
 
     iwantScroll.prototype = {
-        init: _init,
-        bind: _bind,
-        start: _start,
-        move: _move,
-        end: _end
+        init: function () {
+            this.assertTheDomIsOk();
+            this.resize();
+            this.createScrollbar();
+            this.draggable();
+        },
+
+        assertTheDomIsOk: function () {
+            if (typeof this.el == 'undefined') {
+                throw 'A DOM Object needed.';
+            }
+        },
+
+        resize: function () {
+            this.innerEl = this.innerEl || this.el.children[0];
+
+            var node = this.el;
+            var childNode = this.innerEl;
+
+            node.style.width = this.width + 'px';
+            node.style.height = this.height + 'px';
+            node.style.overflow = 'hidden';
+            node.style.position = 'relative';
+
+            childNode.style.width = this.innerWidth + 'px';
+            childNode.style.height = this.innerHeight + 'px';
+            childNode.style.userSelect = 'none';
+        },
+
+        draggable: function () {
+            var _this = this;
+            var _draggable = false;
+            var target = this.innerEl;
+            var xmax = this.innerWidth - this.width;
+            var ymax = this.innerHeight - this.height;
+
+            target.addEventListener('mousedown', function (e) {
+                _this.from.x = e.clientX;
+                _this.from.y = e.clientY;
+                _draggable = true;
+            }, false);
+
+            target.addEventListener('mousemove', function (e) {
+                if (_draggable) {
+                    _this.to.x = e.clientX;
+                    _this.to.y = e.clientY;
+                    _this.translate.x = _this.translate.x + _this.to.x - _this.from.x;
+                    _this.translate.y = _this.translate.y + _this.to.y - _this.from.y;
+
+                    if (_this.translate.x > 0) {
+                        _this.translate.x = 0;
+                    }
+
+                    if (_this.translate.x < -xmax) {
+                        _this.translate.x = -xmax;
+                    }
+
+                    if (_this.translate.y > 0) {
+                        _this.translate.y = 0;
+                    }
+
+                    if (_this.translate.y < -ymax) {
+                        _this.translate.y = -ymax;
+                    }
+
+                    _this.innerEl.style.transform = 'translate('+ _this.translate.x + 'px,'+ _this.translate.y +'px)';
+                    _this.xbar.style.left = (-_this.translate.x / xmax) * (_this.width - _this.xbar._width) +'px';
+                    _this.ybar.style.top = (-_this.translate.y / ymax) * (_this.height - _this.ybar._height) +'px';
+                }
+            }, false);
+
+            target.addEventListener('mouseup', function (e) {
+                _draggable = false;
+            }, false);
+        },
+
+        createScrollbar: function () {
+            var xRadio = this.width / this.innerWidth;
+            var yRadio = this.height / this.innerHeight;
+
+            if (xRadio < 1) {
+                var xbar = document.createElement('div');
+                xbar._width = this.width * xRadio;
+                xbar.style.width = xbar._width + 'px';
+                xbar.style.height = '3px';
+                xbar.style.background = 'rgba(0,0,0, .6)';
+                xbar.style.position = 'absolute';
+                xbar.style.left = '0';
+                xbar.style.bottom = '0';
+
+                this.el.appendChild(xbar);
+                this.xbar = xbar;
+                this.xRadio = xRadio;
+            }
+
+            if (yRadio < 1) {
+                var ybar = document.createElement('div');
+                ybar._height = this.height * yRadio;
+                ybar.style.width = '3px';
+                ybar.style.height = ybar._height + 'px';
+                ybar.style.background = 'rgba(0,0,0, .6)';
+                ybar.style.position = 'absolute';
+                ybar.style.top = '0';
+                ybar.style.right = '0';
+
+                this.el.appendChild(ybar);
+                this.ybar = ybar;
+                this.yRadio = yRadio;
+            }
+        },
     };
 
     return iwantScroll;
