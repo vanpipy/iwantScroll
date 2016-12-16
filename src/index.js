@@ -1,4 +1,13 @@
-
+/*
+ * IwantScroll
+ *
+ * A completed scroll process includes [start, move, end, clear];
+ *
+ * Each part has two status[0, 1];
+ * 0 represent in the status otherwise out of it.
+ *
+ * When the last part ended, clear all effect. 
+ */
 (function(global, handler) {
     global.iwantScroll = handler(global);
 })(window, function (global) {
@@ -79,11 +88,11 @@
                 key: statusSequence[index],
                 handler: handler,
                 next: (index + 1) % statusSequence.length
-            }
+            };
         });
 
         var beginStatus = statusSequence[0].key;
-        var endStatus = statusSequence[statusSequence.length - 1].key
+        var endStatus = statusSequence[statusSequence.length - 1].key;
 
         addEventListener(this._target, beginStatus, statusSequence[currentStatus].handler);
         addEventListener(global, endStatus, function () {
