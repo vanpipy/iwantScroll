@@ -18,13 +18,42 @@
             innerHeight: 800,
         }, options);
 
-        this.from = { x: 0, y: 0 };
-        this.to = { x: 0, y: 0 };
-        this.translate = { x: 0, y: 0 };
+        this.from = defaultXAndY();
+        this.to = defaultXAndY();
+        this.transition = defaultXAndY();
+        this.translate = defaultXAndY();
         this.xbar = null;
         this.ybar = null;
         this.xRadio = 1;
         this.yRadio = 1;
+    }
+
+    /*
+     * @param {Number} x
+     * @param {Number} y
+     * @param {Number} i
+     * @param {Number} j
+     * @return {Function}
+     */
+    function scale (x, y, i, j) {
+        /*
+         * @param {Number} start
+         * @return {Number}
+         */
+        return function (start) {
+            start >= x && start <= y ? start / y * j : -1;
+        }
+    }
+
+    function debounce (fn, time) {
+
+    }
+
+    function defaultXAndY (x, y) {
+        var newObj = Object.create(null);
+        newObj.x = x ? x : 0;
+        newObj.y = y ? y : 0;
+        return newObj;
     }
 
     iwantScroll.prototype = {
@@ -61,53 +90,104 @@
             var _this = this;
             var _draggable = false;
             var target = this.innerEl;
-            var xmax = this.innerWidth - this.width;
-            var ymax = this.innerHeight - this.height;
+            var xmax = this.innerWidth - 2 * this.width;
+            var ymax = this.innerHeight - 2 * this.height;
+
+            _this.translate.oldx = 0;
+            _this.translate.oldy = 0;
 
             target.addEventListener('mousedown', function (e) {
-                _this.from.x = e.clientX;
-                _this.from.y = e.clientY;
+                _this.rememberStartPoint(e.clientX, e.clientY);
                 _draggable = true;
             }, false);
 
             target.addEventListener('mousemove', function (e) {
                 if (_draggable) {
-                    _this.to.x = e.clientX;
-                    _this.to.y = e.clientY;
-                    _this.translate.x = _this.translate.x + _this.to.x - _this.from.x;
-                    _this.translate.y = _this.translate.y + _this.to.y - _this.from.y;
-
-                    if (_this.translate.x > 0) {
-                        _this.translate.x = 0;
-                    }
-
-                    if (_this.translate.x < -xmax) {
-                        _this.translate.x = -xmax;
-                    }
-
-                    if (_this.translate.y > 0) {
-                        _this.translate.y = 0;
-                    }
-
-                    if (_this.translate.y < -ymax) {
-                        _this.translate.y = -ymax;
-                    }
-
-                    _this.innerEl.style.transform = 'translate('+ _this.translate.x + 'px,'+ _this.translate.y +'px)';
-                    _this.xbar.style.left = (-_this.translate.x / xmax) * (_this.width - _this.xbar._width) +'px';
-                    _this.ybar.style.top = (-_this.translate.y / ymax) * (_this.height - _this.ybar._height) +'px';
+                    _this.rememberEndPoint(e.clientX, e.clientY);
+                    _this.calculateTransition();
+                    _this.transform(xmax, ymax);
+                    _this.linkScrollbar(xmax, ymax);
                 }
             }, false);
 
             target.addEventListener('mouseup', function (e) {
                 _draggable = false;
+                _this.updateTranslatePosi();
+            }, false);
+
+            target.addEventListener('mouseleave', function () {
+                _draggable = false;
             }, false);
         },
 
-        createScrollbar: function () {
-            var xRadio = this.width / this.innerWidth;
-            var yRadio = this.height / this.innerHeight;
+        rememberStartPoint: function (x, y) {
+            this.from.x = x;
+            this.from.y = y;
+        },
 
+        rememberEndPoint: function (x, y) {
+            this.to.x = x;
+            this.to.y = y;
+        },
+
+        calculateTransition: function () {
+            this.resetTransition();
+            this.transition.x = this.from.x - this.to.x;
+            this.transition.y = this.from.y - this.to.y;
+        },
+
+        resetTransition: function () {
+            this.transition.x = 0;
+            this.transition.y = 0;
+        },
+
+        fixTranslatePosi: function (xmax, ymax) {
+            if (this.translate.x < 0) {
+                this.translate.x = 0;
+            }
+
+            if (this.translate.x > xmax) {
+                this.translate.x = xmax;
+            }
+
+            if (this.translate.y < 0) {
+                this.translate.y = 0;
+            }
+
+            if (this.translate.y > ymax) {
+                this.translate.y = ymax;
+            }
+        },
+
+        calculateTranslatePosi: function () {
+            this.translate.x = this.translate.oldx + this.transition.x;
+            this.translate.y = this.translate.oldy + this.transition.y;
+        },
+
+        updateTranslatePosi: function () {
+            this.translate.oldx = this.translate.x;
+            this.translate.oldy = this.translate.y;
+        },
+
+        transform: function (xmax, ymax) {
+            this.calculateTranslatePosi();
+            this.fixTranslatePosi(xmax, ymax);
+
+            this.innerEl.style.transform = 'translate('+ -this.translate.x + 'px,'+ -this.translate.y +'px)';
+        },
+
+        linkScrollbar: function (xmax, ymax) {
+            this.xbar.style.left = (this.translate.x / xmax) * (this.width - this.xbar._width) +'px';
+            this.ybar.style.top = (this.translate.y / ymax) * (this.height - this.ybar._height) +'px';
+        },
+
+        createScrollbar: function () {
+            this.createXScrollbar();
+            this.createYScrollbar();
+        },
+
+        createXScrollbar: function () {
+            var xRadio = this.width / this.innerWidth;
             if (xRadio < 1) {
                 var xbar = document.createElement('div');
                 xbar._width = this.width * xRadio;
@@ -122,7 +202,10 @@
                 this.xbar = xbar;
                 this.xRadio = xRadio;
             }
+        },
 
+        createYScrollbar: function () {
+            var yRadio = this.height / this.innerHeight;
             if (yRadio < 1) {
                 var ybar = document.createElement('div');
                 ybar._height = this.height * yRadio;
@@ -137,6 +220,10 @@
                 this.ybar = ybar;
                 this.yRadio = yRadio;
             }
+        },
+
+        attacthScrollbar: function () {
+            //TODO: Activate the xbar and ybar scroll events, when mousedown triggered, recalculate the translate position by the mouse motion, deactivate it by event mouseup.
         },
     };
 
