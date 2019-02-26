@@ -45,8 +45,21 @@
         }
     }
 
-    function debounce (fn, time) {
+    function throttle (fn, delay) {
+        var now;
+        var last;
 
+        return function () {
+            now = +new Date();
+
+            if (typeof last == 'undefined') {
+                fn.apply(null, arguments);
+                last = now;
+            } else if (last + delay <= now) {
+                fn.apply(null, arguments);
+                last = now;
+            }
+        }
     }
 
     function defaultXAndY (x, y) {
