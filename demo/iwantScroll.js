@@ -1,1 +1,1 @@
-/home/vanpipy/Clone/iwantScroll/src/index.js
+/home/vanpipy/Clone/iwantScroll/dist/iwantScroll.js

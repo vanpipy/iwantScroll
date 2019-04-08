@@ -2,10 +2,11 @@
   "name": "iwantscroll",
   "version": "1.0.0",
   "description": "create scrollable area",
-  "main": "index.js",
+  "main": "iwantScroll.js",
   "browser": "dist/iwantScroll.js",
   "scripts": {
     "demo": "node serve.js",
+    "build": "rollup -c rollup.config.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -22,12 +23,17 @@
   },
   "homepage": "https://github.com/vanpipy/iwantScroll#readme",
   "dependencies": {
-    "wolfy87-eventemitter": "git+https://github.com/Olical/EventEmitter.git"
+    "@babel/polyfill": "^7.4.3",
+    "core-js": "^3.0.1"
   },
   "devDependencies": {
+    "@babel/core": "^7.5.0",
+    "@babel/preset-env": "^7.5.0",
     "connect": "^3.6.6",
     "connect-livereload": "^0.6.1",
     "open": "^6.1.0",
-    "serve-static": "https://github.com/vanpipy/serve-static.git"
+    "rollup": "^1.16.4",
+    "rollup-plugin-babel": "^4.3.3",
+    "rollup-plugin-node-resolve": "^5.2.0"
   }
 }
