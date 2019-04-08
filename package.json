@@ -1,0 +1,33 @@
+{
+  "name": "iwantscroll",
+  "version": "1.0.0",
+  "description": "create scrollable area",
+  "main": "index.js",
+  "browser": "dist/iwantScroll.js",
+  "scripts": {
+    "demo": "node serve.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vanpipy/iwantScroll.git"
+  },
+  "keywords": [
+    "scrollable"
+  ],
+  "author": "vanpipy",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/vanpipy/iwantScroll/issues"
+  },
+  "homepage": "https://github.com/vanpipy/iwantScroll#readme",
+  "dependencies": {
+    "wolfy87-eventemitter": "git+https://github.com/Olical/EventEmitter.git"
+  },
+  "devDependencies": {
+    "connect": "^3.6.6",
+    "connect-livereload": "^0.6.1",
+    "open": "^6.1.0",
+    "serve-static": "^1.13.2"
+  }
+}
